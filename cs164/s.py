@@ -34,16 +34,18 @@ while inputs :
 	readable,writable,exceptional = select.select(inputs, outputs, inputs, timeout)
 	
 	if not (readable or writable or exceptional):
-		if not lastAck:
+		if not lastAck: # begin sending packets to receiver
 			for x in range window:
 				msg = "pkt"+str(x)
 				msgBuffer.append(msg)
-		else:
+		else: # send packets to receiver beginning with the first unack pkt
 			for x  in range window:
-				msg = "pkt"+str(x+
+				msg = "pkt"+str(x+startWindow)
+				msgBuffer.append(msg)
 		if sender not in outputs:
 			outputs.append(sender)
-		
+		continue	
+	
 		#if(prevAck == "ack0"):
 		#	resend = "pkt1"
 		#else: 
@@ -55,24 +57,26 @@ while inputs :
 	
 		#if sender not in outputs:
 		#	outputs.append(sender)
-		continue
+		#continue
 
 	for s in readable:
-		d = s.recvfrom(1024)
-		ack = d[0]
-		addr = d[1]
 		
-		if ack:
-			print('Received ', ack)
+		while d = s.recvfrom(1024):
+		
+			ack = d[0]
+			addr = d[1]
+		
+			if ack:
+				print('Received ', ack)
 
-			if(ack == "ack0"):
-				reply = "pkt1"
-			else:
-				reply = "pkt0"
-			prevAck = ack
+				#if(ack == "ack0"):
+				#	reply = "pkt1"
+				#else:
+				#	reply = "pkt0"
+				#prevAck = ack
 				
-			# receive 
-			msgBuffer.append(reply)				
+				# receive 
+				#msgBuffer.append(reply)				
 
 			# add socket to output
 			if s not in outputs:
@@ -81,8 +85,9 @@ while inputs :
 		if not msgBuffer:	
 			outputs.remove(s)
 		else:
-			msg = msgBuffer[0]
+			for x in range window:
+				msg = msgBuffer[x]
+				print('Sending', msg,' to ',addr)
+				s.sendto(msg,addr)		
 			msgBuffer = []	
 			
-			print('Sending ',msg,' to ',addr)
-			s.sendto(msg,addr)		
