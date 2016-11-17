@@ -33,17 +33,19 @@ inputs = [ server ]
 # output sockets
 outputs = [ ]
 
-users = {'mando':'pass123', 'sam':'s1', 'andrew':'a1', 'tim':'t1'}
-keys = ['mando', 'sam', 'andrew', 'tim']
+password = {'mando':'pass123', 'sam':'s1', 'andrew':'a1', 'tim':'t1'}
+users = ['mando', 'sam', 'andrew', 'tim']
 
-msgQueue = {}
-usrNmeMsg = "Username: "
-pswd = "Pass: "
-errorUsrName = "Error: Username not found. Enter username: "
-errorPswd = "Error: wrong password. Enter password: "
+msgQue = {'':''}
+getUserName = "Username: "
+getPass = "Password: "
+
+errUserName = "Error: Username not found.\n Enter username: "
+errPass = "Error: wrong password.\n Enter password: "
 
 # key = userName, value = userId
-curUsers = {}
+userName = {'':''}
+clientId = 0
 
 while inputs :
 	
@@ -52,78 +54,95 @@ while inputs :
 	
 	for s in readable:
 		if s is server:
-			connection, clientAddr = s.accept()
-			print >> sys.stderr, 'new connection from', clientAddr
+			conn, cliAddr = s.accept()
+			print >> sys.stderr, 'new connection from', cliAddr
 			
-			connection.setblocking(0)
-			inputs.append(connection)
+			conn.setblocking(0)
+			tmpUserName = clientId
 
-			msgQueue[connection] = Queue.Queue()
-			msgQueue[connection].put(usrNmeMsg)
+			inputs.append(conn)
+			
+			clientPort = str(conn.getpeername()[1])
+			msgQue[clientPort] = getUserName
 		
-			if connection not in outputs:
-				outputs.append(connection)
+			if conn not in outputs:
+				outputs.append(conn)
 		else:
 			data = s.recv(1024)
 			if data:
 				print('recv: '+data)
-				if errorUsrName in data:
+				errUserName = 'Error: username not found.'
+				errPass = 'Error: wrong password.'
+			
+				clientPort = conn.getsockname()
+				clientPort = clientPort[1]
+				
+				if errUserName in data:
 					usrName = data.split(" ")[6]
-					#print('Username: '+usrName)
-					for user in keys:
+					print('Username: '+usrName)
+					for user in users:
 						if user is usrName:
-							curUsers[s] = user
-							msgQueue[s].put(pswd)
+							msgQue[clientPort] = getPass
+							userName[clientPort] = user
 						else:
-							msgQueue[s].put(errorUsrName)
-				elif usrNmeMsg in data:
+							msgQue[clientPort] = errUserName
+				elif getUserName in data:
 					usrName = data.split(" ")[1]
-					#print('In username')
-					#print('Username: '+usrName)	
-					for user in keys:
+					print('In username')
+					print('Username: '+usrName)	
+					for user in users:
 						print('usr: '+user)
 						if (user == usrName):
 							print('Success')
-							curUsers[s] = user
-						 	msgQueue[s].put(pswd)
+						 	msgQue[clientPort] = getPass
+							userName[clientPort] = user
 						else:
-							msgQueue[s].put(errorUsrName)
-				elif errorPswd in data:
-					passwrd = data.split(" ")[5]
-					print('Pass: '+passwrd)
-					if passwrd is users[curUsers[s]]:
-						msgQueue[s].put(menu)
+							msgQue[clientPort] = errUserName
+				elif errPass in data:
+					password = data.split(" ")[5]
+					print('Pass: '+password)
+					if password is password[userName[clientPort]]:
+						msgQue[clientPort] = menu
 					else:
-						msgQueue[s].put(errorPswd)
-				elif pswd in data:
+						msgQue[clientPort] = errPass
+				elif getPass in data:
 					passwrd = data.split(" ")[1]
 					print('Pass: '+passwrd)
-					if passwrd is users[curUsers[s]]:
-						msgQueue[s].put(menu)
+					if passwrd is password[userName[clientPort]]:
+						msgQue[clientPort] = menu
 					else:
-						msgQueue[s].put(errorPswd)
+						msgQue[clientPort] = errPass
+
 				if s not in outputs:
 					outputs.append(s)
 			else:
 				if s in outputs:
-					outputs.remove(s)
-				inputs.remove(s)
+					outputs.remove(clientPort)
+				inputs.remove(clientPort)
 				s.close()
 
-				del msgQueue[s]
+				msgQue[clientPort] = ""
 							
 	for s in writable:
-			try:
-				nextMsg = msgQueue[s].get_nowait()
-			except Queue.Empty:
-				outputs.remove(s)
-			else:
-				s.send(nextMsg)
+			
+		clientPort = s.getpeername()
+		clientPort = str(clientPort[1])
+		
+		nextMsg = msgQue[clientPort]
+		msgQue[clientPort] = ""
+
+		if(nextMsg):
+			s.send(nextMsg)
+		else:
+			outputs.remove(s)
 
 	for s in exceptional:
+		clientPort = s.getpeername()
+		clientPort = clientPort[1]
+		
 		inputs.remove(s)
 		if s in outputs:
 			outputs.remove(s)
 		s.close()
 
-		del msgQueue[s]
+		msgQue[clientPort] = ""
