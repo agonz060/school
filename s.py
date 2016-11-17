@@ -78,18 +78,25 @@ while inputs :
 				clientPort = clientPort[1]
 				
 				if errUserName in data:
+					print('in errUsername')
 					usrName = data.split(" ")[6]
 					print('Username: '+usrName)
 					for user in users:
 						if user is usrName:
+							print('getPass: ',getPass)
+							print('client: ',clientPort)
 							msgQue[clientPort] = getPass
 							userName[clientPort] = user
 						else:
 							msgQue[clientPort] = errUserName
 				elif getUserName in data:
+					print('in getUsername')
+
 					usrName = data.split(" ")[1]
+
 					print('In username')
-					print('Username: '+usrName)	
+					print('Username: '+usrName)
+
 					for user in users:
 						print('usr: '+user)
 						if (user == usrName):
@@ -99,6 +106,7 @@ while inputs :
 						else:
 							msgQue[clientPort] = errUserName
 				elif errPass in data:
+					print('errPass')
 					password = data.split(" ")[5]
 					print('Pass: '+password)
 					if password is password[userName[clientPort]]:
@@ -106,14 +114,16 @@ while inputs :
 					else:
 						msgQue[clientPort] = errPass
 				elif getPass in data:
+					print('getPass')
 					passwrd = data.split(" ")[1]
 					print('Pass: '+passwrd)
 					if passwrd is password[userName[clientPort]]:
 						msgQue[clientPort] = menu
 					else:
 						msgQue[clientPort] = errPass
-
+				
 				if s not in outputs:
+					print('adding client to output')
 					outputs.append(s)
 			else:
 				if s in outputs:
@@ -124,25 +134,32 @@ while inputs :
 				msgQue[clientPort] = ""
 							
 	for s in writable:
-			
-		clientPort = s.getpeername()
-		clientPort = str(clientPort[1])
+		print('in writable')		
+		print('client: ',clientPort)
+		clientPort = str(s.getpeername()[1])
+		
 		
 		nextMsg = msgQue[clientPort]
 		msgQue[clientPort] = ""
+		print('nextMsg: ',nextMsg)
 
 		if(nextMsg):
 			s.send(nextMsg)
 		else:
+			print('removing client',clientPort,' from writable')
 			outputs.remove(s)
 
 	for s in exceptional:
+		print('in exceptional')
+
 		clientPort = s.getpeername()
 		clientPort = clientPort[1]
 		
-		inputs.remove(s)
+		if s in inputs:
+			inputs.remove(s)
 		if s in outputs:
 			outputs.remove(s)
+		
 		s.close()
 
 		msgQue[clientPort] = ""
