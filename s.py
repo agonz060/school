@@ -37,15 +37,17 @@ password = {'mando':'pass123', 'sam':'s1', 'andrew':'a1', 'tim':'t1'}
 users = ['mando', 'sam', 'andrew', 'tim']
 
 msgQue = {'':''}
+
 getUserName = "Username: "
 getPass = "Password: "
-
-errUserName = "Error: Username not found.\n Enter username: "
-errPass = "Error: wrong password.\n Enter password: "
+errUserName = "Error: Username not found. Enter username: "
+errPass = "Error: wrong password. Enter password: "
 
 # key = userName, value = userId
 userName = {'':''}
-clientId = 0
+connectedClients = [ ] 
+
+menu = "Welcome \n **************** \n Select option:\n1. Change password\n2.Log out"
 
 while inputs :
 	
@@ -58,91 +60,162 @@ while inputs :
 			print >> sys.stderr, 'new connection from', cliAddr
 			
 			conn.setblocking(0)
-			tmpUserName = clientId
-
 			inputs.append(conn)
-			
+				
 			clientPort = str(conn.getpeername()[1])
 			msgQue[clientPort] = getUserName
-		
+			connectedClients.append(clientPort)
+
 			if conn not in outputs:
 				outputs.append(conn)
 		else:
 			data = s.recv(1024)
 			if data:
 				print('recv: '+data)
-				errUserName = 'Error: username not found.'
-				errPass = 'Error: wrong password.'
-			
-				clientPort = conn.getsockname()
-				clientPort = clientPort[1]
 				
-				if errUserName in data:
-					usrName = data.split(" ")[6]
-					print('Username: '+usrName)
-					for user in users:
-						if user is usrName:
-							msgQue[clientPort] = getPass
-							userName[clientPort] = user
-						else:
+				error = "Error:"
+				uName = 'username:'
+				uName2 = 'Username:'
+				passWord = 'password:'
+				passWord2 = 'Password:'
+
+				clientPort = str(conn.getpeername()[1])
+				
+				if error in data:
+					print('error in data')
+					if uName in data or uName2 in data:
+						print('in errUserName')
+						usrName = data.split(" ")[6]
+						print('username: ',usrName)
+						
+						flag = 1
+			
+						for user in users:
+							if user == usrName:
+								print('client: ',clientPort,' username match: ',user)
+								print('getPass: ',getPass)
+								msgQue[clientPort] = getPass
+								userName[clientPort] = user
+								
+								if s not in outputs:
+									print('adding s to outputs')
+									outputs.append(s)
+								flag = 0
+								break
+						if flag:
+							print('errorUserName') 
 							msgQue[clientPort] = errUserName
-				elif getUserName in data:
+							if s not in outputs:
+								print('adding s to outputs')
+								outputs.append(s)
+					
+					elif passWord in data or passWord2 in data:
+						print('in errPass')
+					
+						password = data.split(" ")[5]
+						print('Pass: '+password)
+						print('client: ',clientPort)
+						uPass = password[				
+						if password == password[userName[clientPort]]:
+							print('Password found, loading menu')
+							msgQue[clientPort] = menu
+							if s not in outputs:
+								print('adding s to outputs')
+								outputs.append(s)
+							else:
+								print('errPass')
+								msgQue[clientPort] = errPass
+								if s not in outputs:
+									print('adding s to outputs')
+									outputs.append(s)
+				elif uName in data or uName2 in data:
 					usrName = data.split(" ")[1]
 					print('In username')
-					print('Username: '+usrName)	
+					print('Username: '+usrName)
+					flag = 1	
 					for user in users:
-						print('usr: '+user)
 						if (user == usrName):
-							print('Success')
-						 	msgQue[clientPort] = getPass
+						 	print('client: ',clientPort,' username match: ',user)	
+							msgQue[clientPort] = getPass
 							userName[clientPort] = user
-						else:
-							msgQue[clientPort] = errUserName
-				elif errPass in data:
-					password = data.split(" ")[5]
-					print('Pass: '+password)
-					if password is password[userName[clientPort]]:
-						msgQue[clientPort] = menu
-					else:
-						msgQue[clientPort] = errPass
-				elif getPass in data:
+							if s not in outputs:
+								print('adding s to outputs')
+								outputs.append(s)
+							flag = 0
+							break
+					if flag:	
+						print('errorUserName')
+						msgQue[clientPort] = errUserName
+						if s not in outputs:
+							print('adding s to outputs')
+							outputs.append(s)
+				
+				elif passWord in data or passWord2 in data:
+					print('inGetPass')
 					passwrd = data.split(" ")[1]
-					print('Pass: '+passwrd)
-					if passwrd is password[userName[clientPort]]:
-						msgQue[clientPort] = menu
-					else:
+					#print('Pass: '+passwrd)
+					#print('client: ',clientPort)
+					
+					uName = userName[clientPort]
+					#print('uName: ',uName)
+					
+					flag = 1	
+					for userName in password:
+						if(userName == uName):
+							if(passwrd == password[uName]):
+								print('Success! uName: ',uName,' pass: ',passwrd)	
+								msgQue[clientPort] = menu
+								
+								if s not in outputs:
+									print('adding s to outputs')
+									outputs.append(s)
+								flag = 0
+								break
+					if flag:	
+						print('errPass')
 						msgQue[clientPort] = errPass
-
-				if s not in outputs:
-					outputs.append(s)
+						
+						if s not in outputs:
+							print('adding s to outputs')
+							outputs.append(s)
+				
 			else:
+				print('closing s')
 				if s in outputs:
 					outputs.remove(clientPort)
-				inputs.remove(clientPort)
+				if s in inputs:
+					inputs.remove(clientPort)
 				s.close()
 
 				msgQue[clientPort] = ""
-							
+		print('at end of readable')
+						
 	for s in writable:
-			
-		clientPort = s.getpeername()
-		clientPort = str(clientPort[1])
-		
-		nextMsg = msgQue[clientPort]
-		msgQue[clientPort] = ""
+		print('in writable')	
+		clientPort = str(s.getpeername()[1])
+		print('client: ', clientPort)
+		actualClient = ""
 
+		for client in connectedClients:
+			nextMsg = msgQue[client]
+			actualClient = client
+			
+			if nextMsg:
+				msgQue[client] = ""
+			break
+		
 		if(nextMsg):
+			print('sending nextMsg: ',nextMsg,' to client: ',actualClient)
 			s.send(nextMsg)
 		else:
+			print('no output, removing s from outputs')
 			outputs.remove(s)
-
+		print('at end of writable')
+	
 	for s in exceptional:
-		clientPort = s.getpeername()
-		clientPort = clientPort[1]
-		
-		inputs.remove(s)
+		print('in Exceptional, closing s')	
+		if s in inputs:
+			inputs.remove(s)
 		if s in outputs:
 			outputs.remove(s)
 		s.close()
-
-		msgQue[clientPort] = ""
