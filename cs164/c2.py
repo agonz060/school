@@ -11,17 +11,20 @@ except socket.error:
 
 # Server address variables
 port = 8888
+ip = socket.gethostbyname('')
+#ip = "10.0.0.4"
 
-ip = "10.0.0.4"
 s.connect((ip,port))
-userName = "Username"
-pswd = "Pass"
+
 
 while(1) :
 	# Receive input from server (data,addr)
 	data = s.recv(1024)
 	print(data)
+	
 	userIn = raw_input()	
+	
 	reply = data + userIn
+	
 	# Repond to sender
 	s.sendall(reply)
