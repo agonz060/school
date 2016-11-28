@@ -49,18 +49,18 @@ while(1) :
 			s.close()
 			break
 		if menuMsg in data:
-			print('Menu detected')
-			print('data: ',data)
+			#print('Menu detected')
+			#print('data: ',data)
 			userIn = raw_input()
 			reply = data + formatReply + userIn
 		elif currentPass in data or newMsg in data:
-			print('currentPass or newMsg detected')
-			print('data: ',data)
+			#print('currentPass or newMsg detected')
+			#print('data: ',data)
 			userIn = getpass.getpass("")
 			reply = data + formatReply + userIn
 		elif pwMsg1 in data or pwMsg2 in data:
-			print('pwMsg1 or psMsg2 detected')
-			print('datat: ',data)
+			#print('pwMsg1 or psMsg2 detected')
+			#print('datat: ',data)
 			pw = getpass.getpass("")
 			reply = data + pw
 		else:

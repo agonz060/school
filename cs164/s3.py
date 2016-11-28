@@ -48,14 +48,13 @@ errPass = "Error: wrong password. Enter password: "
 # key = portNumber value = userName
 userName = {'':''}
 
-
-
 menu = "\tMenu\n*******************\nSelect option:"
 sendMsgOption = "\n1. Send message"
 checkInboxOption = "\n2. Check inbox"
-pswdOption = "\n3. Change password"
-logOutOption = "\n4.Log out"
-options = [sendMsgOption,checkInboxOption,pswdOption,logOutOption]
+requestOption = "\n3. Send request"
+pswdOption = "\n4. Change password"
+logOutOption = "\n5.Log out"
+options = [sendMsgOption,checkInboxOption,requestOption, pswdOption,logOutOption]
 numOptions = len(options)
 
 for x in range(0,numOptions):
@@ -80,6 +79,10 @@ messages = [ ]
 testMsg = 'From: mando\nTo: andrew\n************\nSuccess is near\n************\n'
 messages.append(testMsg)
 newMsgRecved = "New message received"
+replyingToRequest = "requests to display"
+# Key = uName , value = [requests]
+requests = {'':[ ]}
+friends = {'':[ ]}
 
 #print("option.len: ", len(options))
 def _compose1(data,clientPort): 
@@ -201,6 +204,7 @@ def _checkInbox(clientPort):
 
 def _displayMsgs(uName,clientPort):
 	print('in _displayMsgs')
+	_checkInbox(clientPort)
 	#print('userName: ',uName)
 	selectMsg = _getInboxMenu(uName)
 	#print(selectMsg)
@@ -264,6 +268,107 @@ def _readMsg(data,clientPort):
 		msgQue[clientPort] = errSelection + menu
 
 	return
+
+def _displayRequests(uName,clientPort):
+	print('in display requests')
+	reqsMsg = _getRequests(uName)
+
+	msgQue[clientPort] = reqsMsg
+	return
+
+def _getRequests(uName):
+	numRequests = _getNumReqs(uName)
+	print('numReqs: ', numRequests)
+
+	reqsMsg = "\n\n" + numRequests + " requests to display" + "\n**********************"
+	requestsList = requests[uName]
+	print('requests: ',requests)
+
+	for x in range(0, len(requestsList[uName])):
+		requestFrom = '\n' + str(x) + '. From: ' + requestsList[x]
+		reqsMsg += requestFrom
+
+	return reqsMsg
+
+def _getNumReqs(uName):
+	return len(requests[uName])
+
+def _replyToRequest(data,clientPort):
+	print('in _replyToRequest')
+	replySplit = data.split('\n')
+	replyIndex = len(replySplit) - 1
+	reply = replySplit[replyIndex]
+	print('reply: ',reply)
+
+	if 'b' in reply:
+		msgQue[clientPort] = menu
+	elif 'a' in reply:
+		replyId = _getReplyId(reply,clientPort)
+		if replyId == -1:
+			reqsMsg = _getRequests(userName[clientPort])
+			msgQue[clientPort] = reqsMsg
+			return
+		else:
+			_acceptRequest(clientPort,replyId)
+			return
+	elif 'r' in reply:
+		print('Continue with rejection actions')
+
+def _acceptRequest(clientPort,replyId):
+	print('in _acceptRequest')
+	print('replyId: ',replyId)
+	uName = userName[clientPort]
+
+	reqs = requests[uName]
+	print('requests for user ',uName,': ',reqs)
+
+	friendName = reqs[replyId]
+	print('friendName: ',friendName)
+
+	friendsList = friends[uName]
+	friendsList.append(friendName)
+
+	friends[uName] = friendsList
+
+	_updateRequests(uName,friendName)
+	acceptedMsg = '\nAccepted ' + friendName + "'s friend request"
+	completeMsg = acceptedMsg + _getRequests(uName)
+	print('completeMsg: ',completeMsg)
+	msgQue[clientPort] = completeMsg
+	return 
+
+def _updateRequests(uName,friendName):
+	print('updating requests for user: ',uName)
+	reqs = requests[uName]
+	print('requests before: ', reqs)
+
+	updated = [ ]
+	for x in range(0,len(reqs)):
+		if friendName is not reqs[x]:
+			print('user: ',reqs[x],' being added to updated')
+			updated.append(reqs[x])
+		else:
+			print('friendName: ',friendName,' reqs[x]: ',reqs[x])
+
+	requests[uName] = updated
+	print('requests after: ', updated)
+	return 
+
+def _getReplyId(reply,clientPort):
+	print('in _getReplyId')
+	print('reply: ',reply)
+
+	numReqs = _getNumReqs(userName[clientPort])
+
+	replySplit = reply.split(' ')
+	replyIdIndex = len(replySplit) - 1
+	replyId = int(replySplit[replyIdIndex])
+	print('replyId: ',replyId)
+	
+	if replyId >= 0 and replyId < numReqs:
+		return replyId
+	else:
+		return -1
 
 while inputs :
 	# wait for a socket to be ready for processing
@@ -444,14 +549,14 @@ while inputs :
 					inputSplit = data.split('\n')
 					inputIndex = len(inputSplit) - 1
 					userInput = inputSplit[inputIndex]
-					print('menuInput: ', userInput)
+					#print('menuInput: ', userInput)
 
 					userOption  = ""
 
 					for x in range(0,numOptions):
 						if userInput in options[x]:
 							userOption = options[x]
-							print('userOption: ', userOption)
+							#print('userOption: ', userOption)
 
 					if "message" in userOption:
 						print('in send message option')
@@ -461,8 +566,9 @@ while inputs :
 						msgQue[clientPort] = changePswdMsg
 					elif "inbox" in userOption:
 						print('in inbox option')
-						_checkInbox(clientPort)
 						_displayMsgs(userName[clientPort],clientPort)
+					elif "request" in userOption:
+						_displayRequests(userName[clientPort],clientPort)
 					elif "out" in userOption:
 						print('in log out option')
 						msgQue[clientPort] = loggingOutMsg
@@ -485,6 +591,12 @@ while inputs :
 				elif "Select message" in data:
 					print('selecting message to read')
 					_readMsg(data,clientPort)
+
+					if s not in outputs:
+						outputs.append(s)
+				elif replyingToRequest in data:
+					print('replying to request')
+					_replyToRequest(data,clientPort)
 
 					if s not in outputs:
 						outputs.append(s)
