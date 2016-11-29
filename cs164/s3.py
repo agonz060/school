@@ -302,17 +302,21 @@ def _replyToRequest(data,clientPort):
 
 	if 'b' in reply:
 		msgQue[clientPort] = menu
-	elif 'a' in reply:
+	elif 'a' in reply or 'r' in reply:
 		replyId = _getReplyId(reply,clientPort)
 		if replyId == -1:
 			reqsMsg = _getRequests(userName[clientPort])
+			invalidInMsg = "* Invalid input"
 			msgQue[clientPort] = reqsMsg
 			return
 		else:
-			_acceptRequest(clientPort,replyId)
-			return
-	elif 'r' in reply:
-		print('Continue with rejection actions')
+			if 'a' in reply:
+				_acceptRequest(clientPort,replyId)
+				return
+			elif 'r' in reply:
+				//To do
+				print('Continue with rejection actions')
+				return
 
 def _acceptRequest(clientPort,replyId):
 	print('in _acceptRequest')
